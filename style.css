@@ -1,0 +1,11 @@
+
+  
+  button,
+  input,
+  pre {
+    margin: 0.5rem;
+  }
+  
+  #output {
+    display: block
+  }
