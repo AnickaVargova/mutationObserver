@@ -1,95 +1,70 @@
-console.log("hi there");
+const observer = new MutationObserver(observerHandler);
 
-const toggle = document.querySelector("#toggle");
-const rhubarb = document.querySelector("#rhubarb");
-const observerTarget = document.querySelector("body");
+const observerTarget = document.querySelector("html");
 
-const childOutput = document.querySelector("#output");
-const attributeOutput = document.querySelector("#attrOutput");
+let isObserving = false;
 
-function myFunction() {
-  const node = document.createElement("div");
-
-  const textnode = document.createTextNode("Water");
-  node.setAttribute("style", "color:blue");
-  node.appendChild(textnode);
-
-  const subnode = document.createElement("div");
-  const subtextnode = document.createTextNode("Blueberry");
-
-  setTimeout(() => {
-    rhubarb.appendChild(node);
-  }, 1000); // childlist callback triggered
-
-  setTimeout(() => {
-    subnode.appendChild(subtextnode);
-    subnode.setAttribute("style", "color:black");
-    subnode.setAttribute("id", "blueberry"); // attribute callback triggered
-
-    subnode.innerHTML = '<div><p id="mushroom">Mushroom</p></div>';
-    node.appendChild(subnode);
-  }, 2000); // childlist callback triggered
-
-  //   setTimeout(() => {
-  //     subnode.setAttribute("style", "color:green"); // attribute callback triggered
-  //   }, 3000);
-}
-
-const myAttrChange = () => {
-  const colors = ["red", "blue", "pink", "hotpink", "azure", "grey"];
-  setTimeout(() => {
-    apple.style.color = colors[Math.floor(Math.random() * colors.length)];
-  }, 1000);
+const start = () => {
+  if (!isObserving) {
+    console.log('starting the observer');
+    observer.observe(observerTarget, config);
+    isObserving = true;
+  }
 };
 
-toggle.addEventListener("click", () => {
-  myFunction();
-  myAttrChange();
-});
+const stop = () => {
+  if (isObserving) {
+    console.log('stopping the observer');
+    observer.disconnect();
+    isObserving = false;
+  }
+};
 
 const config = {
   subtree: true,
   childList: true,
   attributes: true,
-  attributeOldValue: true,
 };
 
-const changeTimestampsChild = [];
-
-const callback = (mutationList) => {
-  console.log("callback called");
-  for (const mutation of mutationList) {
-    console.log("xxx mutation", mutation);
-    if (mutation.type === "childList") {
-      [].forEach.call(mutation.addedNodes, (node) => {
-        // document
-        //   .getElementById("mushroom")
-        //   ?.setAttribute("style", "color: brown");
-        // if node is an element (Node.ELEMENT_NODE)
-        if (node.nodeType === 1) {
-          console.log("adding element");
-          node?.setAttribute("style", "color:orange");
-        }
-      });
-      observer.disconnect();
-      changeTimestampsChild.push(Date.now());
-      childOutput.textContent = `A child element has been changed  ${changeTimestampsChild.length} times .`;
-
-      observer.observe(observerTarget, config);
-    } else if (mutation.type === "attributes") {
-      myAttrChange();
-      observer.disconnect();
-
-      attributeOutput.textContent = `The ${
-        mutation.attributeName
-      } attribute was modified from "${
-        mutation.oldValue
-      } , timestamp: "${Date.now()}".`;
-
-      observer.observe(observerTarget, config);
-    }
+const applyAllExperiments = (node) => {
+  // the selector must match
+  if (!node.classList.contains("paragraphContainer")) {
+    return;
   }
+  console.log("applying experiment on", node);
+  node.insertAdjacentHTML(
+    "beforeend",
+    "<p class='paragraphContainer'>hi, I am a new paragraph</p>"
+  );
 };
 
-const observer = new MutationObserver(callback);
-observer.observe(observerTarget, config);
+const applyCallbackOnMutations = (mutations, callback) => {
+  mutations.forEach((m) => {
+    m.addedNodes.forEach((n) => {
+      // only if the added node is an element
+      if (n.nodeType === 1) {
+        // apply experiments
+        callback(n);
+      }
+    });
+  });
+};
+
+function observerHandler(mutationsList) {
+  console.log("observerHandler called for mutations:", mutationsList);
+
+  applyCallbackOnMutations(mutationsList, applyAllExperiments);
+
+  // pending mutations must be collected right before stopping the observer.
+  // If the observer is stopped before applying the callback, there will be no pending mutations.
+  // If the observer is not stopped at all, this will result in an endless loop.
+
+  const pendingMutations = observer.takeRecords();
+  stop();
+  console.log("pending mutations:", pendingMutations);
+  pendingMutations.length &&
+    applyCallbackOnMutations(pendingMutations, applyAllExperiments);
+  start();
+}
+
+start();
